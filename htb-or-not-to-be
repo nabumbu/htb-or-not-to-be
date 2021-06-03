@@ -1,0 +1,146 @@
+#!/bin/bash
+###
+# flags: -l (active, retired), 
+#-i (machine info: with ), -s (sort: id,Difficulty, Name, OS)
+#
+#
+##
+target="https://www.hackthebox.eu/"
+endpoint=""
+while getopts h:i:l:p:sk: flag
+do
+    case "${flag}" in
+        i) info=${OPTARG};;
+        l) list=${OPTARG};;
+        p) play=${OPTARG};;
+        s) stop="stop";;
+        k) sort=${OPTARG};;
+    esac
+done
+
+echo "list: $list";
+
+
+function get_machines() {
+
+
+
+case $1 in
+    active)
+        endpoint="api/v4/machine/list"
+        output="active_machines.json"
+        ;;
+    retired)
+        endpoint="api/v4/machine/list/retired"
+        output="retired_machines.json"
+        ;;
+    all)
+        endpoint="api/v4/machine/list/active" #194
+        ;;
+    *)
+        ;;
+esac
+
+
+if [ -n $endpoint ]
+then
+    echo $target$endpoint
+    machine_data=$(curl -s -H "Authorization: Bearer $ACCESS_TOKEN" -H "Accept: application/json" $target$endpoint -X GET -L )
+    echo "size: "
+    echo $machine_data | jq '.info' | jq length 
+    echo $machine_data > $output
+else
+    echo "not valid option"
+fi
+
+
+
+}
+
+function print_list(){
+
+    if [ $sort ]
+    then
+
+        case $sort in
+            id) key="id";;
+            level) key="difficulty";;
+            name) key="name";;
+            os) key="os";;
+            *) key="id";;
+        esac    
+        echo $1 | jq '.info | sort_by(.'$key') [] | "\(.id) \(.name) \(.difficultyText) \(.ip) \(.os) \(.authUserInRootOwns)"' | sed -e 's/^"//' -e 's/"$//' | awk 'BEGIN { printf ("%s \t %8s \t %8s \t %8s \t %8s \t %8s \n", "ID" ,"Name", "Difficulty", "IP" , "OS", "authUserInRootOwns")} { printf("%s \t %8s \t %8s \t %8s \t %8s \t %8s \n", $1, $2, $3, $4, $5, $6) }'
+    else
+        echo $1 | jq '.info[]| "\(.id) \(.name) \(.difficultyText) \(.ip) \(.os) \(.authUserInRootOwns)"' | sed -e 's/^"//' -e 's/"$//' | awk 'BEGIN { printf ("%s \t %8s \t %8s \t %8s \t %8s \t %8s \n", "ID" ,"Name", "Difficulty", "IP" , "OS", "authUserInRootOwns")} { printf("%s \t %8s \t %8s \t %8s \t %8s \t %8s \n", $1, $2, $3, $4, $5, $6) }'
+    fi
+    
+    
+
+}
+
+function searchIdMachineByName(){
+    
+    echo $1
+
+    get_machines active
+    #print_list $machine_data
+    machine_id=$(echo $machine_data | jq '.info[] | select(.name=="'$1'") | (.id)')
+    
+    echo "id active: "$machine_id
+
+    if [ $machine_id ]
+    then
+        echo ""
+    else
+        get_machines retired
+        machine_id=$(echo $machine_data | jq '.info[] | select(.name=="'$1'") | (.id)')
+        echo "id retired: "$machine_id
+
+    fi
+
+    #jq '.info[] | select(.difficultyText=="Medium")'
+}
+
+function play_machine(){
+    #https://www.hackthebox.eu/api/v4/machine/play/344
+    echo "https://www.hackthebox.eu/api/v4/machine/play/"$1 
+    curl  -H "Authorization: Bearer $ACCESS_TOKEN" -H "Accept: application/json" https://www.hackthebox.eu/api/v4/machine/play/$1 -X POST -L 
+}
+
+function stop_machine(){
+    #https://www.hackthebox.eu/api/v4/machine/play/344
+    curl  -H "Authorization: Bearer $ACCESS_TOKEN" -H "Accept: application/json" https://www.hackthebox.eu/api/v4/machine/stop -X POST -L 
+}
+
+
+
+read  -p 'Enter email: ' email
+read -s -p 'Enter password: ' password
+echo -e "\n"
+
+
+ACCESS_TOKEN=$(curl -s -H "Content-Type: application/json" -d '{"email": "'"$email"'", "password": "'"$password"'"}' -X POST https://www.hackthebox.eu/api/v4/login -L | jq -r '.message' | jq -r '.access_token')	
+
+
+
+if [ -z "$ACCESS_TOKEN" ]
+then
+    echo "error"
+
+else
+    if [ $list ]
+    then
+        get_machines $list
+        print_list $machine_data
+    elif [ $play ]
+    then
+        searchIdMachineByName $play
+        echo "play machine $machine_id"
+        #play_machine $machine_id
+    elif [ $stop ]
+    then
+        stop_machine
+    else
+        echo "no token"
+    fi
+fi
