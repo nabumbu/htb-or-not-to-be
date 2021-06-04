@@ -7,7 +7,7 @@
 ##
 target="https://www.hackthebox.eu/"
 endpoint=""
-while getopts h:i:l:p:sk: flag
+while getopts h:i:l:p:sk:O: flag
 do
     case "${flag}" in
         i) info=${OPTARG};;
@@ -15,6 +15,8 @@ do
         p) play=${OPTARG};;
         s) stop="stop";;
         k) sort=${OPTARG};;
+        O) os=${OPTARG};;
+        *);;
     esac
 done
 
@@ -32,7 +34,7 @@ case $1 in
         ;;
     retired)
         endpoint="api/v4/machine/list/retired"
-        output="retired_machines.json"
+	output="retired_machines.json"
         ;;
     all)
         endpoint="api/v4/machine/list/active" #194
@@ -46,9 +48,6 @@ if [ -n $endpoint ]
 then
     echo $target$endpoint
     machine_data=$(curl -s -H "Authorization: Bearer $ACCESS_TOKEN" -H "Accept: application/json" $target$endpoint -X GET -L )
-    echo "size: "
-    echo $machine_data | jq '.info' | jq length 
-    echo $machine_data > $output
 else
     echo "not valid option"
 fi
@@ -72,18 +71,6 @@ function print_list(){
 
         if [ $sort == "level" ]    
         then
-            echo "level"
-
-<<com
-cat active_machines.json | jq ' .info[] 
-| select(.difficultyText=="Easy").level |= 0
-| select(.difficultyText=="Medium").level |= 1 
-| select(.difficultyText=="Hard").level |= 2
-| select(.difficultyText=="Insane").level |= 3
-| "\(.id) \(.name) \(.difficultyText) \(.ip) \(.os) \(.authUserInRootOwns) \(.level)"' | sed -e 's/^"//' -e 's/"$//' | sort -k 7| awk 'BEGIN { printf ("%s \t %8s \t %8s \t %8s \t %8s \t %8s \t %8s \n", "ID" ,"Name", "Difficulty", "IP" , "OS", "authUserInRootOwns", "LEVEL")} { printf("%s \t %8s \t %8s \t %8s \t %8s \t %8s \t %8s  \n", $1, $2, $3, $4, $5, $6, $7) }'
-
-com
-
             echo $1 | jq ' .info[] 
 | select(.difficultyText=="Easy").level |= 0
 | select(.difficultyText=="Medium").level |= 1 
@@ -93,6 +80,10 @@ com
         else
         echo $1 | jq '.info | sort_by(.'$key') [] | "\(.id) \(.name) \(.difficultyText) \(.ip) \(.os) \(.authUserInRootOwns)"' | sed -e 's/^"//' -e 's/"$//' | awk 'BEGIN { printf ("%s \t %8s \t %8s \t %8s \t %8s \t %8s \n", "ID" ,"Name", "Difficulty", "IP" , "OS", "authUserInRootOwns")} { printf("%s \t %8s \t %8s \t %8s \t %8s \t %8s \n", $1, $2, $3, $4, $5, $6) }'
         fi
+    elif [ $os ]
+    then
+        echo "$os"
+        echo $1 | jq '.info[]|select(.os=="'$os'") | "\(.id) \(.name) \(.difficultyText) \(.ip) \(.os) \(.authUserInRootOwns)"' | sed -e 's/^"//' -e 's/"$//' | awk 'BEGIN { printf ("%s \t %8s \t %8s \t %8s \t %8s \t %8s \n", "ID" ,"Name", "Difficulty", "IP" , "OS", "authUserInRootOwns")} { printf("%s \t %8s \t %8s \t %8s \t %8s \t %8s \n", $1, $2, $3, $4, $5, $6) }'
     else
         echo $1 | jq '.info[]| "\(.id) \(.name) \(.difficultyText) \(.ip) \(.os) \(.authUserInRootOwns)"' | sed -e 's/^"//' -e 's/"$//' | awk 'BEGIN { printf ("%s \t %8s \t %8s \t %8s \t %8s \t %8s \n", "ID" ,"Name", "Difficulty", "IP" , "OS", "authUserInRootOwns")} { printf("%s \t %8s \t %8s \t %8s \t %8s \t %8s \n", $1, $2, $3, $4, $5, $6) }'
     fi
