@@ -64,12 +64,35 @@ function print_list(){
 
         case $sort in
             id) key="id";;
-            level) key="difficulty";;
+            level) key="level";;
             name) key="name";;
             os) key="os";;
             *) key="id";;
-        esac    
+        esac
+
+        if [ $sort == "level" ]    
+        then
+            echo "level"
+
+<<com
+cat active_machines.json | jq ' .info[] 
+| select(.difficultyText=="Easy").level |= 0
+| select(.difficultyText=="Medium").level |= 1 
+| select(.difficultyText=="Hard").level |= 2
+| select(.difficultyText=="Insane").level |= 3
+| "\(.id) \(.name) \(.difficultyText) \(.ip) \(.os) \(.authUserInRootOwns) \(.level)"' | sed -e 's/^"//' -e 's/"$//' | sort -k 7| awk 'BEGIN { printf ("%s \t %8s \t %8s \t %8s \t %8s \t %8s \t %8s \n", "ID" ,"Name", "Difficulty", "IP" , "OS", "authUserInRootOwns", "LEVEL")} { printf("%s \t %8s \t %8s \t %8s \t %8s \t %8s \t %8s  \n", $1, $2, $3, $4, $5, $6, $7) }'
+
+com
+
+            echo $1 | jq ' .info[] 
+| select(.difficultyText=="Easy").level |= 0
+| select(.difficultyText=="Medium").level |= 1 
+| select(.difficultyText=="Hard").level |= 2
+| select(.difficultyText=="Insane").level |= 3
+| "\(.id) \(.name) \(.difficultyText) \(.ip) \(.os) \(.authUserInRootOwns) \(.level)"' | sed -e 's/^"//' -e 's/"$//' | sort -k 7 | awk 'BEGIN { printf ("%s \t %8s \t %8s \t %8s \t %8s \t %8s \n", "ID" ,"Name", "Difficulty", "IP" , "OS", "authUserInRootOwns")} { printf("%s \t %8s \t %8s \t %8s \t %8s \t %8s \n", $1, $2, $3, $4, $5, $6) }'
+        else
         echo $1 | jq '.info | sort_by(.'$key') [] | "\(.id) \(.name) \(.difficultyText) \(.ip) \(.os) \(.authUserInRootOwns)"' | sed -e 's/^"//' -e 's/"$//' | awk 'BEGIN { printf ("%s \t %8s \t %8s \t %8s \t %8s \t %8s \n", "ID" ,"Name", "Difficulty", "IP" , "OS", "authUserInRootOwns")} { printf("%s \t %8s \t %8s \t %8s \t %8s \t %8s \n", $1, $2, $3, $4, $5, $6) }'
+        fi
     else
         echo $1 | jq '.info[]| "\(.id) \(.name) \(.difficultyText) \(.ip) \(.os) \(.authUserInRootOwns)"' | sed -e 's/^"//' -e 's/"$//' | awk 'BEGIN { printf ("%s \t %8s \t %8s \t %8s \t %8s \t %8s \n", "ID" ,"Name", "Difficulty", "IP" , "OS", "authUserInRootOwns")} { printf("%s \t %8s \t %8s \t %8s \t %8s \t %8s \n", $1, $2, $3, $4, $5, $6) }'
     fi
