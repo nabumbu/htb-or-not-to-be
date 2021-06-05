@@ -7,25 +7,11 @@
 ##
 target="https://www.hackthebox.eu/"
 endpoint=""
-while getopts h:i:l:p:sk:O: flag
-do
-    case "${flag}" in
-        i) info=${OPTARG};;
-        l) list=${OPTARG};;
-        p) play=${OPTARG};;
-        s) stop="stop";;
-        k) sort=${OPTARG};;
-        O) os=${OPTARG};;
-        *);;
-    esac
-done
 
-echo "list: $list";
+trap ctrl_c INT
 
 
 function get_machines() {
-
-
 
 case $1 in
     active)
@@ -34,10 +20,7 @@ case $1 in
         ;;
     retired)
         endpoint="api/v4/machine/list/retired"
-	output="retired_machines.json"
-        ;;
-    all)
-        endpoint="api/v4/machine/list/active" #194
+	    output="retired_machines.json"
         ;;
     *)
         ;;
@@ -97,7 +80,7 @@ function searchIdMachineByName(){
     echo $1
 
     get_machines active
-    #print_list $machine_data
+
     machine_id=$(echo $machine_data | jq '.info[] | select(.name=="'$1'") | (.id)')
     
     echo "id active: "$machine_id
@@ -112,7 +95,7 @@ function searchIdMachineByName(){
 
     fi
 
-    #jq '.info[] | select(.difficultyText=="Medium")'
+    
 }
 
 function play_machine(){
@@ -128,33 +111,115 @@ function stop_machine(){
 
 
 
-read  -p 'Enter email: ' email
-read -s -p 'Enter password: ' password
-echo -e "\n"
+function download_data(){
+    get_machines active
+    echo $machine_data > $output
+    get_machines retired
+    echo $machine_data > $output
+}
+
+function htb_login(){
+    read  -p 'Enter email: ' email
+    read -s -p 'Enter password: ' password
+    echo -e "\n"
 
 
-ACCESS_TOKEN=$(curl -s -H "Content-Type: application/json" -d '{"email": "'"$email"'", "password": "'"$password"'"}' -X POST https://www.hackthebox.eu/api/v4/login -L | jq -r '.message' | jq -r '.access_token')	
+    ACCESS_TOKEN=$(curl -s -H "Content-Type: application/json" -d '{"email": "'"$email"'", "password": "'"$password"'"}' -X POST https://www.hackthebox.eu/api/v4/login -L | jq -r '.message' | jq -r '.access_token')	
+
+ 
+}
+
+
+function dependencies(){
+    array=( "figlet")
+    for i in "${array[@]}"
+    do
+        command -v $i >/dev/null 2>&1 || { 
+            echo >&2 "$i required"; 
+            exit 1; 
+        }
+    done    
+}
+
+#htb_login
+
+#download_data
+
+#dependencies
+#figlet -w 100 HTB or NOT to BE
+
+
+#check options
+
+FLAG_INFO=64
+FLAG_LIST=16
+FLAG_LIST_SORT=48
+FLAG_LIST_OS=18
+FLAG_LIST_SORT_OS=50
+FLAG_PLAY_MACHINE=8
+FLAG_STOP_MACHINE=4
+FLAG_DOWNLOAD_DATA=1
 
 
 
-if [ -z "$ACCESS_TOKEN" ]
-then
-    echo "error"
 
-else
-    if [ $list ]
-    then
-        get_machines $list
-        print_list $machine_data
-    elif [ $play ]
-    then
-        searchIdMachineByName $play
-        echo "play machine $machine_id"
-        #play_machine $machine_id
-    elif [ $stop ]
-    then
-        stop_machine
-    else
-        echo "no token"
-    fi
-fi
+function main(){
+    echo "$@"
+    FLAG_CHECK=0
+
+    while getopts dh:i:l:p:sk:O: flag
+    do
+        case "${flag}" in
+            d) d=true  && FLAG_CHECK=$(expr $FLAG_CHECK + 1) ;;
+            i) info=${OPTARG} && FLAG_CHECK=$(expr $FLAG_CHECK + 64);;
+            k) sort=${OPTARG} && FLAG_CHECK=$(expr $FLAG_CHECK + 32);;
+            l) list=${OPTARG} && FLAG_CHECK=$(expr $FLAG_CHECK + 16);;
+            p) play=${OPTARG} && FLAG_CHECK=$(expr $FLAG_CHECK + 8);;
+            s) s=true && FLAG_CHECK=$(expr $FLAG_CHECK + 4);;
+            O) os=${OPTARG} && FLAG_CHECK=$(expr $FLAG_CHECK + 2);;
+            *);;
+        esac
+    done
+
+    check $FLAG_CHECK
+
+}
+
+function check(){
+    case $1 in
+        $FLAG_INFO) 
+            echo "INFO: not available yet" 
+
+            ;;
+        $FLAG_LIST)    
+            echo "Get machine list" 
+            htb_login
+            get_machines $list
+            print_list $machine_data
+            ;;
+        $FLAG_LIST_SORT)   
+            echo "Get machines and sort: not available yet" 
+            ;;
+        $FLAG_LIST_OS) 
+            echo "Get machines and select OS: not available yet" 
+            ;;
+        $FLAG_LIST_SORT_OS) 
+            echo "Get machines, select OS and sort: not available yet" 
+            ;;
+        $FLAG_PLAY_MACHINE) 
+            echo "PLAY MACHINE: not available yet" 
+            ;;  
+        $FLAG_STOP_MACHINE)     
+            echo "STOP MACHINE: not available yet" 
+            ;;
+        $FLAG_DOWNLOAD_DATA) 
+            echo "DOWNLOAD DATA: not available yet" 
+            ;;
+        *)
+            echo "error"
+            exit 1 
+            ;;
+    esac
+}
+
+main "$@"
