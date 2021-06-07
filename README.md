@@ -1,4 +1,5 @@
 # htb-or-not-to-be
+
 A Bash Script that interacts with HackTheBox throught its API v4
 ## ...STILL TESTING...
 List active machines
