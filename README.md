@@ -1,7 +1,5 @@
 # htb-or-not-to-be
 
->HTB OR NOT TO BE - William ShellScript
-
 A Bash Script that interacts with HackTheBox throught its API v4
 ## ...STILL TESTING...
 List active machines
